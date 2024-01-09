@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head >
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #label {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.6);
+            line-height: 1;
+            border-radius: 5px;
+        }
+    </style>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <script src="./ThreeJs/three.js"></script>
+    <script src="./ThreeJs/stats.min.js"></script>
+    <script src="./ThreeJs/OBJLoader.js"></script>
+    <script src="./ThreeJs/OrbitControls.js"></script>
+    <script src="./ThreeJs/MTLLoader.js"></script>
+    <script src="./ThreeJs/ThreeBSP.js"></script>
+    <script src="./ThreeJs/EffectComposer.js"></script>
+    <script src="./ThreeJs/RenderPass.js"></script>
+    <script src="./ThreeJs/OutlinePass.js"></script>
+    <script src="./ThreeJs/FXAAShader.js"></script>
+    <script src="./ThreeJs/ShaderPass.js"></script>
+    <script src="./ThreeJs/CopyShader.js"></script>
+    <script src="./ThreeJs/UnrealBloomPass.js"></script>
+    <script src="js/ThreeJs_Composer.js"></script>
+    <script src="js/Modules.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/sceneModel.js"></script>
+    <script src="./ThreeJs/Tween.js"></script>
+    <script src="./ThreeJs/dat.gui.min.js"></script>
+    <script  src="./ThreeJs/DragControls.js"></script>
+
+</head>
+<body>
+<div id="label"></div>
+<div id="container"></div>
+
+<script>
+    //创建场景
+    var sceneModel=new SceneModel()
+    //初始化模型材质
+    initMat()
+    //创建库区
+    let storageZone=new storageZone1(0,0,500,500,sceneModel.scene,"ID1$库区1号","FF0000",20,"左对齐",4,3)
+    //创建货架模型
+    let shelfListObj=storageZone.addShelfList(GET_SHELF_LIST())
+    //存在货物列表
+    let cargos_list=[
+        {storageZoneId:'Z1',shelfId:'A1',layerNember:1,location:1,name:'A10003992'},
+        {storageZoneId:'Z1',shelfId:'A3',layerNember:2,location:1,name:'S10003992'},
+    ]
+    //创建货物模型
+    let cargosObjects=storageZone.addCargos(cargos_list)
+    //创建货物存放位置
+    storageZone.addLocation()
+
+    //初始化拖动，cargosObjects-可拖动的物体
+    sceneModel.initDrag(cargosObjects)
+
+    //gui-属性
+    var options ={
+        batchNo :'',
+        qty:0,
+        qtyUom:'',
+        qty2:0,
+        //进入编辑模式
+        startMove :function() {
+            //货物存放位置渲染器
+            sceneModel.composer=new AddShelfLisghter( sceneModel.renderer,  sceneModel.scene,  sceneModel.camera, shelfListObj);
+            //可以拖动
+            sceneModel.dragControls.enabled = true;
+            //鼠标移动监听
+            document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+        },
+        //退出编辑模式
+        endMove :function() {
+            //点击发光渲染器
+            sceneModel.composer=new THREE.ThreeJs_Composer( sceneModel.renderer,  sceneModel.scene,  sceneModel.camera,sceneModel.selectedObjects);
+            //不可拖动
+            sceneModel.dragControls.enabled = false;
+        },
+    }
+
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
+    //鼠标移动监听，当鼠标射线指向可存放位置，则改变货物的pisition为位置的position
+    function onDocumentMouseMove( event ) {
+        event.preventDefault();
+        mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+        raycaster.setFromCamera( mouse, sceneModel.camera );
+        let goosLocation=[]
+        shelfListObj.forEach(item=>{
+            item.goodsLocation.forEach(item1=>{
+                goosLocation.push(item1)
+            })
+        })
+        var intersects = raycaster.intersectObjects( goosLocation );
+        if ( intersects.length > 0 &&sceneModel.dragObject) {
+            var intersect = intersects[ 0 ];
+            sceneModel.dragObject.position.set(intersect.object.position.x,intersect.object.position.y+GET_BOX_SIZE()/2,intersect.object.position.z);
+            sceneModel.dragNewObject={
+                x:intersect.object.position.x,
+                y:intersect.object.position.y+GET_BOX_SIZE()/2,
+                z:intersect.object.position.z
+            }
+        }
+    }
+
+    //初始化gui界面
+    sceneModel.initGUI(options)
+
+    function animate() {
+        requestAnimationFrame(animate);
+        sceneModel.renderer.render(sceneModel.scene, sceneModel.camera);
+        sceneModel.composer.render();
+        update();
+    }
+    // 更新控件
+    function update() {
+        sceneModel.stats.update();
+        sceneModel.orbitControls.update();
+        TWEEN.update()
+    }
+    animate();
+</script>
+</body>
+</html>
